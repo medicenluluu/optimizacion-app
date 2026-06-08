@@ -15,7 +15,6 @@ from sympy.parsing.sympy_parser import (
 # ─── PAGE CONFIG ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Métodos de Optimización",
-    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -74,7 +73,7 @@ if not st.session_state.user_name:
                     background:rgba(88,166,255,0.1); border:1px solid rgba(88,166,255,0.3);
                     color:#58a6ff; font-size:11px; font-weight:700; letter-spacing:3px;
                     text-transform:uppercase; padding:5px 18px; border-radius:20px; margin-bottom:28px;">
-            ⚡ &nbsp;Cálculo Numérico · Universidad
+                 &nbsp;Cálculo Numérico · Universidad
         </div>
         <div style="font-size:clamp(2.8rem,7vw,5rem); font-weight:900;
                     background:linear-gradient(90deg,#58a6ff 0%,#bc8cff 55%,#58a6ff 100%);
@@ -447,7 +446,7 @@ hr { border-color: #21262d !important; }
 with st.sidebar:
     st.markdown(f"""
     <div class="user-badge">
-        <span>👤 &nbsp;{st.session_state.user_name}</span>
+        <span> &nbsp;{st.session_state.user_name}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -468,29 +467,90 @@ def format_matrix_latex(mat):
     return res
 
 def parse_function(func_str, vars_list):
+    """
+    Interpreta funciones matemáticas aceptando:
+
+    ✅ Decimales con coma:
+       1,5*x  -> 1.5*x
+
+    ✅ Decimales con punto:
+       1.5*x
+
+    ✅ Multiplicación implícita:
+       4xy -> 4*x*y
+
+    ✅ Potencias:
+       x^2 -> x**2
+
+    ✅ ln(x) -> log(x)
+    """
+
     var_names = [str(v) for v in vars_list]
+
     try:
+
+        # Potencias estilo x^2
         s = func_str.replace('^', '**')
+
+        # ln -> log
         s = re.sub(r'\bln\b', 'log', s)
-        s = re.sub(r'(\d),(\d)', r'\1.\2', s)
+
+        # ✅ SOPORTE COMPLETO PARA DECIMALES
+        # 1,5 -> 1.5
+        # -2,75 -> -2.75
+        # 0,001 -> 0.001
+        s = re.sub(r'(?<=\d),(?=\d)', '.', s)
+
         varset = set(var_names)
+
         def can_split(symbol):
+
+            # No dividir variables válidas
             if symbol in varset:
                 return False
+
+            # Evita dividir x1, x2, y1, etc.
             if any(c.isdigit() for c in symbol):
                 return False
+
             return _token_splittable(symbol)
-        T = (standard_transformations + (
-            convert_xor, split_symbols_custom(can_split),
-            implicit_multiplication, implicit_application))
+
+        T = (
+            standard_transformations +
+            (
+                convert_xor,
+                split_symbols_custom(can_split),
+                implicit_multiplication,
+                implicit_application
+            )
+        )
+
         ld = {v: sp.Symbol(v) for v in var_names}
-        return parse_expr(s, transformations=T, local_dict=ld)
+
+        expr = parse_expr(
+            s,
+            transformations=T,
+            local_dict=ld
+        )
+
+        return expr
+
     except Exception:
+
         try:
-            s = func_str.replace('^', '**').replace('ln', 'log')
-            s = re.sub(r'(\d),(\d)', r'\1.\2', s)
+
+            s = func_str.replace('^', '**')
+
+            s = re.sub(r'\bln\b', 'log', s)
+
+            # ✅ También aquí
+            s = re.sub(r'(?<=\d),(?=\d)', '.', s)
+
+            # Multiplicación implícita básica
             s = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', s)
+
             return sp.sympify(s)
+
         except Exception:
             return None
 
@@ -504,20 +564,6 @@ def parse_start_point(raw):
         if p:
             vals.append(float(p))
     return vals
-
-def pretty_latex(s):
-    """Convierte el texto del usuario a LaTeX RESPETANDO su orden exacto
-    (no usa SymPy, así no reordena los términos)."""
-    s = s.replace(' ', '')
-    s = re.sub(r'(\d),(\d)', r'\1.\2', s)
-    s = s.replace('**', '^')
-    s = re.sub(r'\^(\-?\d+\.?\d*)', r'^{\1}', s)
-    s = re.sub(r'\bln\b', r'\\ln ', s)
-    s = re.sub(r'\bexp\b', r'\\exp ', s)
-    s = re.sub(r'\bsqrt\b', r'\\sqrt', s)
-    s = re.sub(r'\b(sin|cos|tan|log)\b', r'\\\1 ', s)
-    s = s.replace('*', r' \cdot ')
-    return s
 
 def compute_gradient(expr, variables):
     return [sp.diff(expr, var) for var in variables]
@@ -754,7 +800,7 @@ def run_conjugate_gradient(expr, vars_sym, x0, alpha_type, alpha_val, max_iter, 
                 step_info += f"- **Nuevo Gradiente $\\nabla C(x_{k+1})$:** ${format_latex_array(grad_next_val)}$\n"
                 step_info += f"- **Factor de conjugación ($\\beta_k$):** `{beta:.4f}`\n"
                 if fr_exploto:
-                    step_info += "\n\n⚠️ **Observación Académica**\n\n"
+                    step_info += "\n\n **Observación Académica**\n\n"
                     step_info += (
                         "No es recomendable continuar utilizando Fletcher-Reeves en esta iteración. "
                         "El factor de conjugación β obtuvo un valor excesivamente grande, provocando "
@@ -784,7 +830,7 @@ def mostrar_metodo():
 
     metodo = st.session_state.metodo_info
     if metodo == "gradiente":
-        st.subheader("📉 Método del Gradiente")
+        st.subheader(" Método del Gradiente")
         st.write("""
         Busca mínimos moviéndose en la dirección opuesta al gradiente.
         • Fácil de implementar.
@@ -792,7 +838,7 @@ def mostrar_metodo():
         • Puede requerir muchas iteraciones.
         """)
     elif metodo == "newton":
-        st.subheader("🚀 Método de Newton")
+        st.subheader(" Método de Newton")
         st.write("""
         Utiliza gradiente y Hessiana para aproximar rápidamente el óptimo.
         • Convergencia rápida (cuadrática cerca del óptimo).
@@ -800,7 +846,7 @@ def mostrar_metodo():
         • Si la Hessiana no es definida positiva, se usa Matriz Identidad automáticamente.
         """)
     elif metodo == "conjugado":
-        st.subheader("🎯 Gradiente Conjugado")
+        st.subheader(" Gradiente Conjugado")
         st.write("""
         Genera direcciones conjugadas para evitar recorrer caminos repetidos.
         • Más eficiente que gradiente clásico.
@@ -827,19 +873,19 @@ def main_app():
         <span class="sidebar-title">💡 Diccionario</span>
         <span class="sidebar-subtitle">de Métodos</span>
         """, unsafe_allow_html=True)
-        if st.button("📉 Método del Gradiente"):
+        if st.button(" Método del Gradiente"):
             st.session_state.metodo_info = "gradiente"
             mostrar_metodo()
-        if st.button("🚀 Método de Newton"):
+        if st.button(" Método de Newton"):
             st.session_state.metodo_info = "newton"
             mostrar_metodo()
-        if st.button("🎯 Gradiente Conjugado"):
+        if st.button(" Gradiente Conjugado"):
             st.session_state.metodo_info = "conjugado"
             mostrar_metodo()
 
     st.markdown("""
     <div class="hero-header">
-        <div class="hero-badge">⚡ &nbsp;Cálculo Numérico · Optimización Numérica</div>
+        <div class="hero-badge"> &nbsp;Cálculo Numérico · Optimización Numérica</div>
         <h1 class="hero-title">Métodos de Optimización</h1>
         <div class="hero-divider"></div>
         <p class="hero-subtitle">Gradiente Descendente &nbsp;·&nbsp; Newton &nbsp;·&nbsp; Gradiente Conjugado</p>
@@ -875,7 +921,7 @@ def main_app():
         "Rosenbrock · (1-x)² + 100(y-x²)²": ("x, y", "(1-x)**2 + 100*(y - x**2)**2", "-1 ; 1"),
         "Logarítmica · ln(x²+y²) - 2xy": ("x, y", "ln(x**2 + y**2) - 2*x*y", "-1 ; 0"),
     }
-    _ex_choice = st.selectbox("📚 Ejemplos precargados:", list(_examples.keys()))
+    _ex_choice = st.selectbox(" Ejemplos precargados:", list(_examples.keys()))
     if _examples[_ex_choice] is not None and st.session_state.get('last_example') != _ex_choice:
         _v, _f, _s = _examples[_ex_choice]
         st.session_state.vars_text = _v
@@ -906,8 +952,8 @@ def main_app():
             _syms_p = [_syms_p] if len(vars_names) == 1 else list(_syms_p)
             _expr_p = parse_function(func_input, _syms_p)
             if _expr_p is not None:
-                st.markdown('<p style="color:#3fb950; font-size:12px; font-weight:600; margin:8px 0 4px;">✅ Función reconocida:</p>', unsafe_allow_html=True)
-                st.latex(pretty_latex(func_input))
+                st.markdown('<p style="color:#3fb950; font-size:12px; font-weight:600; margin:8px 0 -4px;">✅ Función reconocida <span style="color:#8b949e; font-weight:400;">(el orden de los términos puede variar, es la misma función)</span>:</p>', unsafe_allow_html=True)
+                st.latex(sp.latex(_expr_p, order='none'))
             elif func_input.strip():
                 st.markdown('<p style="color:#f85149; font-size:12px; margin-top:6px;">⚠ Función no reconocida — revisa la sintaxis</p>', unsafe_allow_html=True)
         except Exception:
@@ -946,7 +992,7 @@ def main_app():
     st.markdown("""
     <div style="margin:20px 0 6px;">
         <span style="font-size:11px; font-weight:700; color:#8b949e; letter-spacing:2px; text-transform:uppercase;">
-            🎹 Teclado Matemático — clic para insertar en la función
+             Teclado Matemático — clic para insertar en la función
         </span>
     </div>
     """, unsafe_allow_html=True)
@@ -1001,9 +1047,9 @@ def main_app():
         st.session_state.method_idx = 0
 
     _methods = [
-        ("Gradiente",  "📉", "Método del Gradiente",             "#58a6ff", "rgba(88,166,255,0.08)",  "1er orden · Robusto · Fijo/Wolfe"),
-        ("Newton",     "🚀", "Método de Newton",                 "#bc8cff", "rgba(188,140,255,0.08)", "2do orden · Convergencia rápida"),
-        ("Conjugado",  "🎯", "Método del Gradiente Conjugado",   "#3fb950", "rgba(63,185,80,0.08)",   "Sin Hessiana · Eficiente"),
+        ("Gradiente",   "Método del Gradiente",             "#58a6ff", "rgba(88,166,255,0.08)",  "1er orden · Robusto · Fijo/Wolfe"),
+        ("Newton",     "Método de Newton",                 "#bc8cff", "rgba(188,140,255,0.08)", "2do orden · Convergencia rápida"),
+        ("Conjugado",  "Método del Gradiente Conjugado",   "#3fb950", "rgba(63,185,80,0.08)",   "Sin Hessiana · Eficiente"),
     ]
 
     card_cols = st.columns(3)
@@ -1067,7 +1113,7 @@ def main_app():
     col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
     with col_btn2:
         st.markdown('<div class="resolve-btn">', unsafe_allow_html=True)
-        execute = st.button("⚡ Resolver Problema")
+        execute = st.button(" Resolver Problema")
         st.markdown('</div>', unsafe_allow_html=True)
 
     if execute:
